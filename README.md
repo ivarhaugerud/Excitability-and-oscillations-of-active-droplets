@@ -68,6 +68,14 @@ Install all dependencies with:
 pip install numpy scipy matplotlib SciencePlots colormaps
 ```
 
+## Data
+
+The pre-computed data files required by the figure scripts are available on Zenodo:
+
+> DOI: [10.5281/zenodo.19612876](https://doi.org/10.5281/zenodo.19612876)
+
+Download the `data/` folder from Zenodo and place it in the root of this repository before running the plotting scripts.
+
 ## Usage
 
 Most figure scripts load pre-computed data from `data/` and produce PDF figures in `figures/`. Run each script directly:
