@@ -1,15 +1,8 @@
 import os
-import numpy as np 
-import scipy.spatial     as scs
-import scipy.optimize    as sco
-import matplotlib.pyplot as plt 
-import matplotlib.animation as animation
+import numpy as np
+import matplotlib.pyplot as plt
 from functions import *
-import scipy.interpolate as sci
 import scipy.integrate as scint
-
-import os
-import itertools
 
 import colormaps as cmaps
 cm = cmaps.WhiteYellowOrangeRed
@@ -48,9 +41,7 @@ def get_curve_length(x, y):
     
     return total_length
 
-import colormaps as cmaps
 import matplotlib as mpl
-#cm = cmaps.bamako
 
 xi_ab = 0
 xi_ac = 2.01

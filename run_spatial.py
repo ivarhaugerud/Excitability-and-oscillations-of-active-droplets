@@ -1,3 +1,14 @@
+"""
+Spatial (2D PDE) simulation of active droplets using a Fourier-spectral method.
+
+Solves the Cahn-Hilliard-like equations for two volume-fraction fields phi_A and
+phi_B on a periodic square domain. The Laplacian operator is applied exactly in
+Fourier space. Time integration uses a semi-implicit scheme where the linear
+(surface-tension) terms are treated implicitly and the nonlinear reaction/mobility
+terms explicitly.
+
+Snapshots of phi_A and phi_B are saved to data/ at regular intervals.
+"""
 import numpy as np
 from numpy.fft import rfft2, irfft2, fftfreq, rfftfreq
 
@@ -56,7 +67,6 @@ def implicitrk(u, v, delta, thresh, steep, fuel, k_p, omegaA, omegaB, omegaC, rh
     Time integration using the ETDRK4 scheme
     """
     niter = 0
-    changed_stepsise = False
 
     while niter < n_step+1:
         Nu, Nv = non_linear_terms(u, v, delta, thresh, steep, fuel, k_p, omegaA, omegaB, omegaC, rho_A, rho_B, Gamma_A, Gamma_B, Lambda_A, Lambda_B, k_x, k_y, k2, U)
@@ -92,10 +102,8 @@ omegaB =  0.1
 delta      = 1e-6
 T          = 100
 n_step     = int(T/delta)
-skip_frame = 1000
 Nfigs      = 1000
 figskip    = int(n_step/Nfigs)
-skip_frame    = int(n_step/skip_frame)
 
 #use the expression 0.5*( max(M) + min(M) ), where max(M)=lambda/4, and min(M) = 0
 D_A = 1

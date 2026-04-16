@@ -1,15 +1,8 @@
 import os
-import numpy as np 
-import scipy.optimize    as sco
-#import scipy.signal      as scsi
-import matplotlib.pyplot as plt 
-import matplotlib.animation as animation
-#from kinetics import run_system
+import numpy as np
+import matplotlib.pyplot as plt
 from functions import *
 import scipy.interpolate as sci
-import scipy.signal as scs
-import os
-import itertools
 
 fontsize = 8.5
 plt.style.use(['science','no-latex'])

@@ -1,14 +1,31 @@
-import scipy.spatial  as scs 
+import scipy.spatial  as scs
 import scipy.optimize as sco
-import scipy.signal   as sci
 import numpy as np
 import matplotlib.pyplot as plt
 
 def calc_gibbs_mu(phi, k_bT, nu, omega, xi):
+    """
+    Compute chemical potentials for all 3 components from the Flory-Huggins free energy.
+
+    Parameters:
+        phi   : [phi_A, phi_B] — volume fractions of components A and B;
+                phi_C = 1 - phi_A - phi_B is appended internally.
+        k_bT  : thermal energy k_B * T.
+        nu    : array of molecular volumes [nu_A, nu_B, nu_C].
+        omega : array of internal energies [omega_A, omega_B, omega_C].
+        xi    : 3x3 interaction-parameter matrix (Flory-Huggins chi values).
+
+    Returns:
+        mu : array of length 3 with chemical potentials [mu_A, mu_B, mu_C].
+    """
     phi = np.append(phi, 1-np.sum(phi))
-    return k_bT*(np.log(phi)   +1) + omega    + xi.dot(phi) - 0.5*nu*np.dot(phi, np.dot(xi, phi)) - k_bT*nu*np.sum(phi/nu)
+    return k_bT*(np.log(phi) + 1) + omega + xi.dot(phi) - 0.5*nu*np.dot(phi, np.dot(xi, phi)) - k_bT*nu*np.sum(phi/nu)
 
 def bino_intersect_chemindx(chem_eq, bino):
+    """
+    Find the index along chem_eq that lies closest to any point on the binodal.
+    Used to locate where the reaction nullcline crosses the binodal boundary.
+    """
     dist = np.zeros(len(chem_eq[:, 0]))
     for i in range(len(dist)):
         dist[i] = np.amin(np.square(chem_eq[i, 0] - bino[:, 0]) + np.square(chem_eq[i, 1] - bino[:, 1]))
@@ -16,6 +33,9 @@ def bino_intersect_chemindx(chem_eq, bino):
     return indx
 
 def bino_intersect_binoindx(chem_eq, bino):
+    """
+    Inverse of bino_intersect_chemindx: find the binodal index closest to any point on chem_eq.
+    """
     dist = np.zeros(len(bino[:, 0]))
     for i in range(len(dist)):
         dist[i] = np.amin(np.square(chem_eq[:, 0] - bino[i, 0]) + np.square(chem_eq[:, 1] - bino[i, 1]))
@@ -24,6 +44,13 @@ def bino_intersect_binoindx(chem_eq, bino):
 
 
 def fuel_foo(phi_a, phi_b, thresh, kappa, delta):
+    """
+    Smooth fuel-strength function: arctan approximation of a step at phi_a + phi_b = thresh.
+
+    Returns the effective chemical potential drive delta(phi_a, phi_b), which increases
+    smoothly from 0 to delta as the total concentration rises above thresh.
+    kappa sets the steepness of the transition.
+    """
     return (np.arctan( (phi_a+phi_b - thresh)/kappa) + np.pi/2)*(delta/np.pi)
 
 def check_inside(phi_a_bar, phi_b_bar, P, bot, top):
@@ -57,24 +84,17 @@ def check_inside_type2ab(phi_a_bar, phi_b_bar, bino):
     return inside
 
 def contour_lines_ab(phi, nu, k_bT, omega, xi, bot, top, bino):
+    """
+    Compute the reaction-1 nullcline (mu_A = mu_B) over the composition grid.
+    Returns the zero-contour as an array of (phi_A, phi_B) coordinates.
+    """
     chem_equil  = np.zeros((len(phi), len(phi)))
-    distances   = np.zeros(len(bino[:, 0]))
-    
+
     for i in range(len(phi)):
         for j in range(len(phi)):
             if phi[i] + phi[j] < 1:
-                if True:#not check_inside_type2ab(phi[i], phi[j], bino):#True:
-                    temp             = calc_gibbs_mu(np.array([phi[i], phi[j]]), k_bT, nu, omega, xi)
-                    chem_equil[j, i] = (temp[0]-temp[1])/k_bT
-                else:
-                    for k in range(len(bino[:, 0])):
-                        beta  = (bino[k, 3] - bino[k, 1])/(bino[k, 2]-bino[k, 0]+1e-6)
-                        alpha =  bino[k, 3] - beta*bino[k, 2]
-                        distances[k] = np.amin(np.square(phi-phi[i]) + np.square(alpha+phi*beta-phi[j]))
-
-                    tiline_index     = np.argmin(distances)            
-                    temp             = calc_gibbs_mu(np.array([bino[tiline_index, 0], bino[tiline_index, 1]]), k_bT, nu, omega, xi)
-                    chem_equil[j, i] = (temp[0]-temp[1])/k_bT
+                temp             = calc_gibbs_mu(np.array([phi[i], phi[j]]), k_bT, nu, omega, xi)
+                chem_equil[j, i] = (temp[0]-temp[1])/k_bT
 
     cp       = plt.contour(phi, phi, chem_equil, levels=np.zeros(1))
     contour  = cp.collections[0]
@@ -82,6 +102,11 @@ def contour_lines_ab(phi, nu, k_bT, omega, xi, bot, top, bino):
     return chem_eq
 
 def contour_lines_ab_interval(phi_a, phi_b, nu, k_bT, omega, xi, bot, top, bino, thresh, kappa, delta):
+    """
+    Compute the fuel-driven reaction-1 nullcline on a rectangular (phi_a, phi_b) grid
+    rather than a square grid. Useful when the two axes have different ranges.
+    Returns the zero-contour as an array of (phi_A, phi_B) coordinates.
+    """
     chem_equil  = np.zeros((len(phi_b), len(phi_a)))
     
     for i in range(len(phi_a)):
@@ -97,25 +122,18 @@ def contour_lines_ab_interval(phi_a, phi_b, nu, k_bT, omega, xi, bot, top, bino,
     return chem_eq
 
 def contour_lines_ab_fuel(phi, nu, k_bT, omega, xi, bot, top, bino, thresh, kappa, delta):
+    """
+    Compute the fuel-driven reaction-1 nullcline (mu_A + delta(phi) = mu_B) over the composition grid.
+    Returns the zero-contour as an array of (phi_A, phi_B) coordinates.
+    """
     chem_equil  = np.zeros((len(phi), len(phi)))
-    distances   = np.zeros(len(bino[:, 0]))
-    
+
     for i in range(len(phi)):
         for j in range(len(phi)):
             if phi[i] + phi[j] < 1:
-                if True:#not check_inside_type2ab(phi[i], phi[j], bino):#True:
-                    delta_val        = fuel_foo(phi[i], phi[j], thresh, kappa, delta)
-                    temp             = calc_gibbs_mu(np.array([phi[i], phi[j]]), k_bT, nu, omega, xi)
-                    chem_equil[j, i] = (temp[0]+delta_val-temp[1])/k_bT
-                else:
-                    for k in range(len(bino[:, 0])):
-                        beta  = (bino[k, 3] - bino[k, 1])/(bino[k, 2]-bino[k, 0]+1e-6)
-                        alpha =  bino[k, 3] - beta*bino[k, 2]
-                        distances[k] = np.amin(np.square(phi-phi[i]) + np.square(alpha+phi*beta-phi[j]))
-
-                    tiline_index     = np.argmin(distances)            
-                    temp             = calc_gibbs_mu(np.array([bino[tiline_index, 0], bino[tiline_index, 1]]), k_bT, nu, omega, xi)
-                    chem_equil[j, i] = (temp[0]-temp[1])/k_bT
+                delta_val        = fuel_foo(phi[i], phi[j], thresh, kappa, delta)
+                temp             = calc_gibbs_mu(np.array([phi[i], phi[j]]), k_bT, nu, omega, xi)
+                chem_equil[j, i] = (temp[0]+delta_val-temp[1])/k_bT
 
     cp       = plt.contour(phi, phi, chem_equil, levels=np.zeros(1))
     contour  = cp.collections[0]
@@ -123,26 +141,21 @@ def contour_lines_ab_fuel(phi, nu, k_bT, omega, xi, bot, top, bino, thresh, kapp
     return chem_eq
 
 def contour_lines_ab_psi(phi, nu, k_bT, omega, xi, bot, top, bino):
+    """
+    Compute both nullclines over the composition grid simultaneously:
+      - Reaction-1 nullcline: mu_A = mu_B  (chem_equil = 0)
+      - Reaction-2 nullcline: mu_A + mu_B = 2*mu_C  (cons_equil = 0)
+
+    Returns (chem_eq, cons_eq), each an array of (phi_A, phi_B) contour coordinates.
+    """
     cons_equil  = np.zeros((len(phi), len(phi)))
     chem_equil  = np.zeros((len(phi), len(phi)))
-    distances   = np.zeros(len(bino[:, 0]))
     for i in range(len(phi)):
         for j in range(len(phi)):
             if phi[i] + phi[j] < 1:
-                if True:#not check_inside_type2ab(phi[i], phi[j], bino):#True:
-                    temp             = calc_gibbs_mu(np.array([phi[i], phi[j]]), k_bT, nu, omega, xi)
-                    chem_equil[j, i] = (temp[0]-temp[1])/k_bT
-                    cons_equil[j, i] = (temp[0]+temp[1]-2*temp[2])/k_bT
-                else:
-                    for k in range(len(bino[:, 0])):
-                        beta  = (bino[k, 3] - bino[k, 1])/(bino[k, 2]-bino[k, 0]+1e-6)
-                        alpha =  bino[k, 3] - beta*bino[k, 2]
-                        distances[k] = np.amin(np.square(phi-phi[i]) + np.square(alpha+phi*beta-phi[j]))
-
-                    tiline_index     = np.argmin(distances)            
-                    temp             = calc_gibbs_mu(np.array([bino[tiline_index, 0], bino[tiline_index, 1]]), k_bT, nu, omega, xi)
-                    chem_equil[j, i] = (temp[0]-temp[1])/k_bT
-                    cons_equil[j, i] = (temp[0]+temp[1]-2*temp[2])/k_bT
+                temp             = calc_gibbs_mu(np.array([phi[i], phi[j]]), k_bT, nu, omega, xi)
+                chem_equil[j, i] = (temp[0]-temp[1])/k_bT
+                cons_equil[j, i] = (temp[0]+temp[1]-2*temp[2])/k_bT
 
     cp       = plt.contour(phi, phi, chem_equil, levels=np.zeros(1))
     contour  = cp.collections[0]
@@ -193,25 +206,8 @@ def get_flows(nu, k_bT, omega, xi, bot, top, bino, phiX, phiY, thresh, kappa, de
 
     return vectors
 
-def run_system_nobino(T, phi_bar, V, k_bT, xi, mu_0r, nu, omega, evap_coeff, react_coeff):
-    R = np.zeros(len(T))
-
-    for i in range(len(T)-1):
-        dt = T[i+1]-T[i]
-        mu2         = calc_gibbs_mu(phi_bar[i,  :], k_bT, nu, omega, xi)
-        Ndot        = np.array([0, 0, evap_coeff*(np.exp(mu_0r[i]/k_bT) - np.exp(mu2[-1]/k_bT)) ])
-        Vdot        = np.sum(nu*Ndot)
-        react       = react_coeff*(-np.exp(mu2[0]/k_bT) + np.exp(mu2[1]/k_bT))
-        r           = np.array([react, -react, 0])
-        
-        phi_bar[i+1, :]  = phi_bar[i, :] + dt*(r[:-1] - Vdot*phi_bar[i, :]/V[i])
-        V[i+1]           = V[i] + dt*Vdot
-        R[i+1]           = np.abs(react)
-
-    return phi_bar, V, R
-
-
-def osmotic_pressure( phi, mu, k_bT, nu, xi_ab, xi_ac, xi_bc, omega):
+def osmotic_pressure(phi, mu, k_bT, nu, xi_ab, xi_ac, xi_bc, omega):
+    """Osmotic pressure: Pi = -f + sum_i phi_i * mu_i / nu_i."""
     return -f(phi, k_bT, nu, xi_ab, xi_ac, xi_bc, omega) + phi[0]*mu[0]/nu[0] + phi[1]*mu[1]/nu[1]
 
 def solve_TD_equations(bin_pts, phi_aver, previous_frac, k_bT, nu, xi_ab, xi_ac, xi_bc, omega):
@@ -246,21 +242,41 @@ def mu_a_and_b(phi, k_bT, nu, xi_ab, xi_ac, xi_bc, omega):
     return np.array([mua, mub])
 
 def TD_equations(state, phi_aver, k_bT, nu, xi_ab, xi_ac, xi_bc, omega):
+    """
+    Thermodynamic equilibrium conditions for two coexisting phases.
+
+    The three equations that must vanish at coexistence are:
+      (1) mu_A^I  = mu_A^II   (equal chemical potential of A)
+      (2) mu_B^I  = mu_B^II   (equal chemical potential of B)
+      (3) Pi^I    = Pi^II     (equal osmotic pressure)
+
+    State vector: [phi_A^I, phi_B^I, V^I/V], where V^I/V is the volume fraction of phase I.
+    Returns a large residual if both phases have nearly identical compositions (trivial solution guard).
+    """
     phi_I   = state[:-1]
     frac_VI = state[-1]
-    
-    phi_II = (phi_aver - frac_VI * phi_I)/(1.-frac_VI)                         # given the V1-volume, the dilute phase is determined
-    mu_I  = mu_a_and_b(phi_I,   k_bT, nu, xi_ab, xi_ac, xi_bc, omega)          # calculate chemical potential in dense phase
-    mu_II = mu_a_and_b(phi_II , k_bT, nu, xi_ab, xi_ac, xi_bc, omega)          # calculate chemical potential in dilute phase
-    
-    # for correct volume fractions this will return zero
+
+    phi_II = (phi_aver - frac_VI * phi_I)/(1.-frac_VI)                         # dilute phase from lever rule
+    mu_I  = mu_a_and_b(phi_I,   k_bT, nu, xi_ab, xi_ac, xi_bc, omega)          # chemical potentials in dense phase
+    mu_II = mu_a_and_b(phi_II , k_bT, nu, xi_ab, xi_ac, xi_bc, omega)          # chemical potentials in dilute phase
+
+    # reject trivial (single-phase) solutions where both phases are the same composition
     if np.sqrt(np.square(phi_I[0]-phi_II[0]) + np.square(phi_I[1] - phi_II[1])) < 0.03:
         return 10*np.ones(3)
-    return np.array([mu_I[0]-mu_II[0], mu_I[1]-mu_II[1], osmotic_pressure(phi_I, mu_I,k_bT, nu, xi_ab, xi_ac, xi_bc, omega) - osmotic_pressure(phi_II, mu_II, k_bT, nu, xi_ab, xi_ac, xi_bc, omega)])
+    return np.array([mu_I[0]-mu_II[0], mu_I[1]-mu_II[1], osmotic_pressure(phi_I, mu_I, k_bT, nu, xi_ab, xi_ac, xi_bc, omega) - osmotic_pressure(phi_II, mu_II, k_bT, nu, xi_ab, xi_ac, xi_bc, omega)])
 
 def get_tieline_twocomp(phi, xi, nu1, nu2, k_bT, omega1, omega2):
-    f    = k_bT*(phi*np.log(phi)/nu1 + (1-phi)*np.log(1-phi)/nu2) + phi*(1-phi)*xi #+ omega1*phi + (1-phi)*omega2
-    
+    """
+    Find the two-component coexistence compositions (tieline endpoints) using a
+    convex-hull construction on the Flory-Huggins free energy curve f(phi).
+
+    The common-tangent construction is equivalent to finding the lower convex hull
+    of f(phi). Sentinel values at the boundary prevent hull degeneracy.
+
+    Returns [phi_I, phi_II]: the two coexisting volume fractions.
+    """
+    f    = k_bT*(phi*np.log(phi)/nu1 + (1-phi)*np.log(1-phi)/nu2) + phi*(1-phi)*xi
+
     f_tilde       = np.zeros(len(f)+2)
     f_tilde[1:-1] = f
     f_tilde[0]    = max(f)+10
@@ -271,7 +287,7 @@ def get_tieline_twocomp(phi, xi, nu1, nu2, k_bT, omega1, omega2):
     phi_tilde[0]    = phi[0]
     phi_tilde[-1]   = phi[-1]
 
-    CH   = scs.ConvexHull( np.transpose(np.array([phi_tilde, f_tilde])), incremental=True)
+    CH   = scs.ConvexHull(np.transpose(np.array([phi_tilde, f_tilde])), incremental=True)
     vert = CH.vertices[2:]-2
     phi  = (CH.points[2:, 0])[vert]
     indx = np.argmax(np.diff(vert))
@@ -357,6 +373,22 @@ def get_binodal(phi, nu, omega, k_bT, xi_ab, xi_ac, xi_bc):
 
 
 def run_system(T, phi_bar, phiI, phiII, V, VI, VII, k_bT, xi_ab, xi_ac, xi_bc, xi, nu, omega, k_p, k_c, bino, P, bot, top, thresh, kappa, delta):
+    """
+    Integrate the coupled ODE system for composition dynamics, handling transitions
+    between the one-phase (homogeneous) and two-phase (phase-separated) regions.
+
+    In the homogeneous region the average composition phi_bar evolves by reaction alone.
+    Upon entering the two-phase region the system splits into a dense phase (I) and a
+    dilute phase (II); their compositions and volumes evolve subject to thermodynamic
+    equilibrium constraints across the interface (equal chemical potentials and pressures).
+    The inter-phase fluxes j1, j2 are solved from the linearised thermodynamic equations
+    (matrix A, vector b) at each time step.
+
+    Integration stops early if a closed periodic orbit is detected by get_period().
+
+    Returns time-truncated arrays: phi_bar, phiI, phiII, VI, VII, free energy F,
+    chemical potentials chems, reaction rates rates, and time T.
+    """
     b      = np.zeros(3)
     A      = np.zeros((3, 3))
     j1     = np.zeros(3)
@@ -407,9 +439,6 @@ def run_system(T, phi_bar, phiI, phiII, V, VI, VII, k_bT, xi_ab, xi_ac, xi_bc, x
             phi_c2 = 1-phi_a2-phi_b2
 
             mu1    = calc_gibbs_mu(phiI[i,  :-1],  k_bT, nu, omega, xi)
-
-            h1 = np.zeros(3)
-            h2 = np.zeros(3)
 
             delta1 = fuel_foo(phiI[i,  0], phiI[i,  1], thresh, kappa, delta)
             delta2 = fuel_foo(phiII[i, 0], phiII[i, 1], thresh, kappa, delta)
@@ -518,6 +547,11 @@ def run_system(T, phi_bar, phiI, phiII, V, VI, VII, k_bT, xi_ab, xi_ac, xi_bc, x
     return phi_bar[:i+1], phiI[:i+1], phiII[:i+1], VI[:i+1], VII[:i+1], F[:i+1], chems[:i+1, :], rates[:i+1, :], T[:i+1]
     
 def run_system_nocycle(T, phi_bar, phiI, phiII, V, VI, VII, k_bT, xi_ab, xi_ac, xi_bc, xi, nu, omega, k_p, k_c, bino, thresh, kappa, delta):
+    """
+    Variant of run_system that stops when the composition reaches a steady state
+    (no cycle detection). Convergence is checked every 1000 steps via the norm of
+    the composition change.
+    """
     b      = np.zeros(3)
     A      = np.zeros((3, 3))
     j1     = np.zeros(3)
@@ -567,9 +601,6 @@ def run_system_nocycle(T, phi_bar, phiI, phiII, V, VI, VII, k_bT, xi_ab, xi_ac, 
             phi_c2 = 1-phi_a2-phi_b2
 
             mu1    = calc_gibbs_mu(phiI[i,  :-1],  k_bT, nu, omega, xi)
-
-            h1 = np.zeros(3)
-            h2 = np.zeros(3)
 
             delta1 = fuel_foo(phiI[i,  0], phiI[i,  1], thresh, kappa, delta)
             delta2 = fuel_foo(phiII[i, 0], phiII[i, 1], thresh, kappa, delta)
@@ -674,20 +705,21 @@ def run_system_nocycle(T, phi_bar, phiI, phiII, V, VI, VII, k_bT, xi_ab, xi_ac, 
                 break
     return phi_bar[:i+1], phiI[:i+1], phiII[:i+1], VI[:i+1], VII[:i+1], F[:i+1], chems[:i+1, :], T[:i+1]
     
-def period_complete(T, x, y):
-    y_end = y[-1]
-    x_end = x[-1]
-
-    skip     = int(0.4*len(T))
-    x, y = x[:-skip], y[:-skip]
-
-    diff = np.sqrt( np.square(y-y_end) + np.square(x - x_end) )
-    if np.amin(diff) < 2*1e-5:
-        return True
-    else:
-        return False
-
 def get_period(T, x, y, tol):
+    """
+    Detect whether the trajectory (x(T), y(T)) has completed a periodic orbit and
+    estimate its period.
+
+    The endpoint (x[-1], y[-1]) is compared to earlier points: if the trajectory
+    returned close (within tol) to the endpoint AND the distance signal subsequently
+    oscillates (sign change in its time derivative), the time elapsed since that
+    return is taken as the period.
+
+    The last 2% of the trajectory is excluded from comparison to avoid false matches
+    with the immediately preceding point.
+
+    Returns (period, True) if an orbit is found, else (0, False).
+    """
     y_end = y[-1]
     x_end = x[-1]
     T_fin = T[-1]
@@ -701,8 +733,6 @@ def get_period(T, x, y, tol):
 
     for indx in indxs:
         if np.amax(diff[indx:]) > 0.01 and np.sign(np.amax(time_deriv[indx:])) != np.sign(np.amin(time_deriv[indx:])):
-            #plt.plot(indx, diff[indx], "ro")
-            #plt.show()
             return T_fin-T[indx], True
     return 0, False
 

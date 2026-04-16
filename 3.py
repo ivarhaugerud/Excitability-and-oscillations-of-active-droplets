@@ -1,12 +1,7 @@
-import numpy as np 
-import scipy.spatial     as scs
-import scipy.optimize    as sco
-import matplotlib.pyplot as plt 
-import matplotlib.animation as animation
+import numpy as np
+import matplotlib.pyplot as plt
 from functions import *
-import scipy.interpolate as sci
 import os
-import itertools
 
 fontsize = 7
 plt.style.use(['science','no-latex'])
@@ -52,9 +47,6 @@ intersect_tot = np.sum(bino[0, :])/2
 thresh = intersect_tot*fac
 kappa = 5*1e-4
 k1, k2 = k_c, k_c
-
-u, c = np.unique(bino[:, 0], return_index=True)
-bot_func    = sci.interp1d(bino[c, 0], bino[c, 1], kind="quadratic")
 
 P, bot, top = fill_between_arrays_type2(bino)
 
