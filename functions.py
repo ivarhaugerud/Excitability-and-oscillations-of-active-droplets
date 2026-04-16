@@ -188,7 +188,6 @@ def get_flows(nu, k_bT, omega, xi, bot, top, bino, phiX, phiY, thresh, kappa, de
                     rII = k_c*(np.exp(temp[0]+delta2)-np.exp(temp[1]))
                     h = k_p*(np.exp(temp[0]+temp[1])-np.exp(2*temp[2]))
                     VI = (phiX[i] - bino[tiline_index, 2])/(bino[tiline_index, 0] - bino[tiline_index, 2])
-                    #print(VI, delta1, delta2)
                     vectors[i, j, 0] = -rI*VI - rII*(1-VI) - h 
                     vectors[i, j, 1] =  rI*VI + rII*(1-VI) - h 
 
@@ -237,7 +236,6 @@ def calculate_binodal(two_comp_sol, end_average, N, k_bT, nu, xi_ab, xi_ac, xi_b
     return binodal_points 
 
 def f(phi, k_bT, nu, xi_ab, xi_ac, xi_bc, omega):
-    #print(np.shape(phi), np.shape(omega), np.shape(nu))
     return k_bT*(phi[0]*np.log(phi[0])/nu[0] + phi[1]*np.log(phi[1])/nu[1] + (1-phi[0]-phi[1])*np.log(1-phi[0]-phi[1])/nu[2]) + phi[0]*phi[1]*xi_ab + phi[0]*(1-phi[0]-phi[1])*xi_ac + phi[1]*(1-phi[0]-phi[1])*xi_bc + omega[0]*phi[0] + omega[1]*phi[1] + omega[2]*(1-phi[0]-phi[1])
 
 
@@ -378,7 +376,6 @@ def run_system(T, phi_bar, phiI, phiII, V, VI, VII, k_bT, xi_ab, xi_ac, xi_bc, x
         inside = check_inside(phi_bar[i, 0], phi_bar[i, 1], P, bot, top)
 
         if inside and not prev_inside:
-            #print("jumped inside", T[i])
             for j in range(len(bino[:,0])):
                 a = (bino[j, 3]-bino[j, 1])/(bino[j, 2]-bino[j, 0])
                 B = bino[j, 3] - a*bino[j, 2]
@@ -433,8 +430,6 @@ def run_system(T, phi_bar, phiI, phiII, V, VI, VII, k_bT, xi_ab, xi_ac, xi_bc, x
             r_2          = np.array([react2-psi2, -react2-psi2, 2*psi2])
             rates[i, 0] = V1*react1 + V2*react2
             rates[i, 1] = V1*psi1 + V2*psi2
-            #print(r_1, r_2, psi1, psi2)
-            #print(V1*(r_1 + psi1) + V2*(r_2 + psi2), "\n\n")
 
             #PHASE 1
             dmua_dphia1 = k_bT/phi_a1 - k_bT - nu[0]*(xi_ab*phi_b1 + xi_ac*phi_c1)
@@ -541,7 +536,6 @@ def run_system_nocycle(T, phi_bar, phiI, phiII, V, VI, VII, k_bT, xi_ab, xi_ac, 
         inside = check_inside_type2ab(phi_bar[i, 0], phi_bar[i, 1], bino)
 
         if inside and not prev_inside:
-            #print("jumped inside", T[i])
             for j in range(len(bino[:,0])):
                 a = (bino[j, 3]-bino[j, 1])/(bino[j, 2]-bino[j, 0])
                 B = bino[j, 3] - a*bino[j, 2]
@@ -674,7 +668,6 @@ def run_system_nocycle(T, phi_bar, phiI, phiII, V, VI, VII, k_bT, xi_ab, xi_ac, 
             chems[i+1, 4] = delta0
 
         if (i+1) % 1000 == 0:
-            print(np.abs(react), np.linalg.norm(phi_bar[i+1, :]-phi_bar[i, :]), phi_bar[i+1, :])
             done = np.linalg.norm(phi_bar[i+1, :]-phi_bar[i, :]) < 1e-7
             if done:
                 print("DONE", np.linalg.norm(phi_bar[i+1, :]-phi_bar[i, :]))

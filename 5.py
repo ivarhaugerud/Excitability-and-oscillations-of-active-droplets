@@ -2,10 +2,8 @@ import os
 import numpy as np 
 import scipy.spatial     as scs
 import scipy.optimize    as sco
-#import scipy.signal      as scsi
 import matplotlib.pyplot as plt 
 import matplotlib.animation as animation
-#from kinetics import run_system
 from functions import *
 import scipy.interpolate as sci
 import scipy.integrate as scint
@@ -68,46 +66,6 @@ phi         = np.linspace(1e-3, 1-1e-3, 1000)
 
 tiline_two_component = get_tieline_twocomp(phi, xi_ac, nu[1], nu[2], k_bT, omega[1], omega[2])
 bino                 = calculate_binodal(tiline_two_component, np.array([0.001, 0.5]), 5000, k_bT, nu, xi_ab, xi_ac, xi_bc, omega)
-P, bot, top          = fill_between_arrays_type2(bino)
-
-chem_diffs = np.zeros((len(bino[:, 0]), 2))
-for i in range(len(bino[:, 0])):
-    temp  = calc_gibbs_mu(bino[i, :2], k_bT, nu, omega, xi)
-    chem_diffs[i, 0] = temp[1] - temp[0]
-    chem_diffs[i, 1] = temp[0] + temp[1] - 2*temp[2]
-
-r1_indx = np.argmin(np.abs(chem_diffs[:, 0]))
-r2_indx = np.argmin(np.abs(chem_diffs[:, 1]))
-
-phi_totI_r2 = bino[r2_indx, 0] + bino[r2_indx, 1]
-phi_totI_r1 = bino[r1_indx, 0] + bino[r1_indx, 1]
-delta_psi = -phi_totI_r1  + phi_totI_r2
-delta_x = bino[r1_indx+1, 0] - bino[r1_indx, 0]
-delta_y = bino[r1_indx+1, 1] - bino[r1_indx, 1]
-angle = np.pi - np.arctan2(delta_y, delta_x)
-
-phi_a0 = bino[r1_indx, 0]
-phi_b0 = bino[r1_indx, 1]
-
-term0 = (xi_bc - xi_ac)*(np.cos(angle) - np.sin(angle)) - xi_ab*(np.sin(angle)+np.cos(angle))
-term1 = (1/phi_a0)*np.cos(angle)
-term2 = (1/phi_b0)*np.sin(angle)
-Thetta = term0 + term1 + term2
-
-chem_pot_diff = Thetta*delta_psi/(np.cos(angle) - np.sin(angle))
-ana2 = 1 + chem_pot_diff*(1 - 0.5*chem_pot_diff)*((bino[r2_indx, 2] + bino[r2_indx, 3] - bino[r2_indx, 0] - bino[r2_indx, 1])/delta_psi -1)
-ana2 = np.log(ana2)
-print("HERE", ana2, delta_psi, angle)
-
-
-deltas = np.arange(2.5, 4.01, 0.05)
-deltas = np.arange(0,    4.01, 0.25)
-deltas = np.arange(0,    4.01, 0.10)
-deltas3 = np.arange(0.72, 0.78, 0.02)
-
-deltas2  = np.arange(2.61, 2.89, 0.02)
-deltas = np.concatenate((deltas, deltas2, deltas3))
-deltas = np.sort(deltas)
 
 deltas1 = np.arange(0,    4.01, 0.10)
 deltas2 = np.arange(2.61, 2.81, 0.02)
@@ -120,10 +78,9 @@ all_VS = np.zeros(len(deltas))
 all_VS_max = np.zeros(len(deltas))
 all_VS_mean = np.zeros(len(deltas))
 
-k_p   = 1
-
+k_p    = 1
 thresh = 0.5
-kappa = 5*1e-4
+kappa  = 5*1e-4
 
 N = int(5*1e5)
 k_c = 1
@@ -133,9 +90,7 @@ periods     = np.zeros(len(deltas))
 lengths     = np.zeros(len(deltas))
 
 
-arrowlength = 0.01
-
-prev_orbit = False
+prev_orbit  = False
 
 line_spacing = 0.2 
 prev_delta = -2
@@ -174,23 +129,13 @@ for I, delta in enumerate(deltas):
         all_NESS[str(i)+"u"] = NESS[:mindx, :]
         all_NESS[str(i)+"s"] = NESS[mindx:, :]
 
-        #print("min indx", mindx)
         if np.amin(NESS[:, 0]+NESS[:, 1]) < NESS[0, 0]+NESS[0, 1] and not excited_PS_found:
             excited_PS_found = True
             excited_PS = delta
 
-            """
-            print("excitable", delta, np.amin(NESS[:, 0]+NESS[:, 1]), NESS[0, 0]+NESS[0, 1])
-            psi_enter = NESS[0, 0] + NESS[0, 1]
-            print(psi_enter, "\n")
-            x_array = np.linspace(0, 1, 100)
-            plt.plot(x_array, psi_enter-x_array, "k:")
-            plt.plot(NESS[:, 0], NESS[:, 1])
-            plt.plot(bino[:, 0], bino[:, 1])
-            plt.show()
-            """
     except:
         print("did not work")
+    
     data = np.transpose(np.load("data/hysterisis_xiab%3.2f_xiac%3.2f_xibc%3.2f_kp%2.3f_delta%3.2f_more.npy" % (xi_ab, xi_ac, xi_bc, k_p, delta)))
 
     phi_bar = data[:,  :2]
@@ -198,8 +143,8 @@ for I, delta in enumerate(deltas):
     phiII   = data[:, 4:6]
     VI      = data[:,  6]
     F       = data[:,  7]
-    mus_p     = data[:,  8]
-    mus_x     = data[:,  9]
+    mus_p   = data[:,  8]
+    mus_x   = data[:,  9]
     VII     = 1-VI
     T       = data[:,  -1]
 
@@ -277,20 +222,14 @@ for I, delta in enumerate(deltas):
 
                 y[l, 0]  = (mu_F)*k_f*(np.exp(mu[0]+mu_F) )
                 y[l, 1]  = (mu[0] - mu[1])*( k_c*(np.exp(mu[0]) - np.exp(mu[1])) + k_f*(np.exp(mu[0]+mu_F) ))
-                y[l, 2]  = (mu[0] + mu[1] - 2*mu[2])*k_p*(np.exp(mu[0]+mu[1]) - np.exp(2*mu[2]))#*k_f
+                y[l, 2]  = (mu[0] + mu[1] - 2*mu[2])*k_p*(np.exp(mu[0]+mu[1]) - np.exp(2*mu[2]))
 
-        energy[i, 0] = scint.trapz(y[:, 0], x)/periods[i]
-        energy[i, 1] = scint.trapz(y[:, 1], x)/periods[i]
-        energy[i, 2] = scint.trapz(y[:, 2], x)/periods[i]
+        energy[i, 0] = scint.trapezoid(y[:, 0], x)/periods[i]
+        energy[i, 1] = scint.trapezoid(y[:, 1], x)/periods[i]
+        energy[i, 2] = scint.trapezoid(y[:, 2], x)/periods[i]
 
-        print(np.shape(phi_bar))
         phi_bar = phi_bar[indx:, :]
-        print(np.shape(phi_bar))
         lengths[i] = get_curve_length(phi_bar[:, 0], phi_bar[:, 1])
-
-        #plt.plot(phi_bar[:, 0])
-        #plt.plot(phi_bar[:, 1])
-        #plt.show()
 
         homo_indexes = np.where(VI[indx:] == 0)[0]
         PS_indexes = np.where(VI[indx:] != 0)[0]
@@ -303,7 +242,6 @@ fig, axes = plt.subplots(nrows=3, ncols=1, height_ratios=[1, 1, 1], figsize=(3, 
 plt.subplots_adjust(wspace=0, hspace=0.2)
 
 PS_start = np.where(energy > 1e-4)[0][0]
-#energy[:SS_PS_indx+1] = 0
 delta_PS_start = (deltas[SS_PS_indx] + deltas[SS_PS_indx-1])/2
 orbit_delta_indx = np.argmin(np.abs(deltas - orbit_delta))
 axes[1].fill_between([0, delta_PS_start], [10, 10], [-10, -10], color="C0", alpha=0.1)
@@ -312,30 +250,16 @@ axes[1].fill_between([excited_PS, orbit_delta], [10, 10], [-10, -10], color="C2"
 axes[1].fill_between([orbit_delta, 5], [10, 10], [-10, -10], color="C3", alpha=0.1)
 
 first_point = np.where(all_VS > 0.1)[0][0]
-#axes[1].plot([delta_PS_start, deltas[first_point]], [1, all_VS[first_point]], "k")
 axes[1].plot(deltas,  all_VS, color="k")
 axes[1].plot(deltas[orbit_delta_indx:], all_VS_max[orbit_delta_indx:], color="C6")
 axes[1].plot(deltas[orbit_delta_indx:], all_VS_mean[orbit_delta_indx:], color="C4")
 axes[1].set_ylim(0.04, 1.2)  # most of the data
 axes[1].set_xlim(-0.05, np.amax(deltas)+0.05)
 axes[1].set_yscale("log")
-#axes[1].plot([ana2, ana2], [-10, 10], "-", color="C2")
-#axes[0].plot([ana2, ana2], [-10, 10], "-", color="C2")
 
 FS = 6.5
-"""
-axes[1].text(0.1, 0.6, "Homo", color="C0",  fontsize=FS)
-axes[1].text(0.1, 0.4, "NESS", color="C0",  fontsize=FS)
-axes[1].text(1.7, 0.6, "PS", color="C1",    fontsize=FS)
-axes[1].text(1.55,0.4, "NESS", color="C1",  fontsize=FS)
-axes[1].text(3.2, 0.6, "Cycle", color="C2", fontsize=FS)
-"""
 axes[1].set_xticklabels([])
-#axes[1].set_xlabel(r"Fuel strength $\delta/k_BT$",   fontsize=FS+1, labelpad=0)
 axes[1].set_ylabel(r"Drop. vol. $V^{\text{II}}/V$", fontsize=FS)
-
-#axes[1].text(3.3, 0.240, "Max", color="C3",    fontsize=FS, rotation=6)
-#axes[1].text(3.1, 0.080, "PS mean", color="C4",  fontsize=FS, rotation=7)
 
 axes[1].tick_params(
     axis='x',          # changes apply to the x-axis
@@ -358,13 +282,6 @@ axes[0].tick_params(
 axes[0].plot(deltas,  energy[:, 0], "k")
 axes[0].set_ylim(-0.005, 0.115)  # most of the data
 axes[0].set_xlim(-0.05, np.amax(deltas)+0.05)
-
-#axes[0].text(0.1, 0.099, "Homog.", color="C0", fontsize=FS)
-#axes[0].text(0.15, 0.083, "NESS", color="C0", fontsize=FS)
-#axes[0].text(1.30, 0.099, "Active droplet", color="C1",   fontsize=FS)
-#axes[0].text(1.55,0.083, "NESS", color="C1", fontsize=FS)
-#axes[0].text(3.2, 0.099, "Cycle", color="C2",fontsize=FS)
-
 axes[0].set_ylabel(r"Entropy prod. $\frac{\dot{S}}{k_1k_B}$", fontsize=FS, labelpad=8)
 
 
@@ -388,7 +305,6 @@ axes[2].plot(deltas, lengths, "k")
 
 axes[2].set_ylim(-0.02, 0.45)  # most of the data
 axes[2].set_xlim(-0.05, np.amax(deltas)+0.05)
-#axes[2].set_yscale("log")
 
 FS = 6.5
 

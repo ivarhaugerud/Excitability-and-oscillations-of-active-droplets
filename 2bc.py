@@ -271,12 +271,5 @@ fig.savefig(filename, bbox_inches="tight", dpi=500)
 os.system('pdfcrop %s %s &> /dev/null &'%(filename, filename))
 plt.show()
 
-from scipy.signal import savgol_filter
-y = branches[worked_deltas, 0]
-yhat = savgol_filter(y, 10, 3) # window size 51, polynomial order 3
-
-plt.plot(y)
-plt.plot(yhat, "k")
-plt.show()
 
 
